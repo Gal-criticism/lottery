@@ -48,6 +48,7 @@ cd ../product
 npm install
 
 # 打包
+export NODE_OPTIONS=--openssl-legacy-provider
 npm run build
 
 # 运行
