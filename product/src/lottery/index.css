@@ -219,14 +219,14 @@ button:active {
   border: 1px solid rgba(127, 255, 255, 0.25);
   color: rgba(127, 255, 255, 0.75);
   width: 30vh;
-  height: 10vh;
+  height: 18vh;
   box-sizing: border-box;
   transition: transform 1s ease-in;
 }
 
 .prize-item .prize-img {
-  width: 8vh;
-  height: 8vh;
+  width: 16vh;
+  height: 16vh;
   margin-right: 1.2vh;
   border-radius: 50%;
   background-color: #fff;
