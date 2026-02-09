@@ -34,7 +34,13 @@ function setupPrizeSelection(callback) {
 let prizeStatus = {};
 
 function setPrizeStatus(statusData) {
-  prizeStatus = statusData || {};
+  if (statusData) {
+    prizeStatus = Object.assign({}, prizeStatus, statusData);
+  }
+}
+
+function resetPrizeStatus() {
+  prizeStatus = {};
 }
 
 function isPrizeDone(type) {
@@ -535,7 +541,10 @@ function showPrizeList(currentPrizeIndex) {
   });
   htmlCode += `</ul>`;
 
-  document.querySelector("#prizeBar").innerHTML = htmlCode;
+  let prizeBar = document.querySelector("#prizeBar");
+  if (prizeBar) {
+    prizeBar.innerHTML = htmlCode;
+  }
 }
 
 function resetPrize(currentPrizeIndex) {
@@ -549,8 +558,10 @@ function resetPrize(currentPrizeIndex) {
 
 let setPrizeData = (function () {
   return function (currentPrizeIndex, count, isInit) {
-    let currentPrize = prizes[currentPrizeIndex],
-      type = currentPrize.type,
+    let currentPrize = prizes[currentPrizeIndex];
+    if (!currentPrize) return;
+    
+    let type = currentPrize.type,
       elements = prizeElement[type],
       totalCount = currentPrize.count;
 
@@ -572,39 +583,60 @@ let setPrizeData = (function () {
     if (isInit) {
       for (let i = 1; i < currentPrizeIndex; i++) {
         let type = prizes[i]["type"];
-        document.querySelector(`#prize-item-${type}`).className =
-          "prize-item done";
-        document.querySelector(`#prize-bar-${type}`).style.width = "0";
-        document.querySelector(`#prize-count-${type}`).textContent =
-          "0" + "/" + prizes[i]["count"];
+        let prizeItem = document.querySelector(`#prize-item-${type}`);
+        let prizeBar = document.querySelector(`#prize-bar-${type}`);
+        let prizeCount = document.querySelector(`#prize-count-${type}`);
+        
+        if (prizeItem) prizeItem.className = "prize-item done";
+        if (prizeBar) prizeBar.style.width = "0";
+        if (prizeCount) prizeCount.textContent = "0" + "/" + prizes[i]["count"];
       }
     }
 
     if (lasetPrizeIndex !== currentPrizeIndex) {
-      let lastPrize = prizes[lasetPrizeIndex],
-        lastBox = document.querySelector(`#prize-item-${lastPrize.type}`);
-      lastBox.classList.remove("shine");
-      lastBox.classList.add("done");
-      elements.box && elements.box.classList.add("shine");
-      prizeElement.prizeType.textContent = currentPrize.text;
-      prizeElement.prizeText.textContent = currentPrize.title;
+      let lastPrize = prizes[lasetPrizeIndex];
+      if (lastPrize) {
+        let lastBox = document.querySelector(`#prize-item-${lastPrize.type}`);
+        if (lastBox) {
+          lastBox.classList.remove("shine");
+          lastBox.classList.add("done");
+        }
+      }
+      
+      if (elements.box) {
+        elements.box.classList.add("shine");
+      }
+      
+      if (prizeElement.prizeType) {
+        prizeElement.prizeType.textContent = currentPrize.text;
+      }
+      if (prizeElement.prizeText) {
+        prizeElement.prizeText.textContent = currentPrize.title;
+      }
 
       lasetPrizeIndex = currentPrizeIndex;
     }
 
     if (currentPrizeIndex === 0) {
-      prizeElement.prizeType.textContent = "特别奖";
-      prizeElement.prizeText.textContent = " ";
-      prizeElement.prizeLeft.textContent = "不限制";
+      if (prizeElement.prizeType) prizeElement.prizeType.textContent = "特别奖";
+      if (prizeElement.prizeText) prizeElement.prizeText.textContent = " ";
+      if (prizeElement.prizeLeft) prizeElement.prizeLeft.textContent = "不限制";
       return;
     }
 
     count = totalCount - count;
     count = count < 0 ? 0 : count;
     let percent = (count / totalCount).toFixed(2);
-    elements.bar && (elements.bar.style.width = percent * 100 + "%");
-    elements.text && (elements.text.textContent = count + "/" + totalCount);
-    prizeElement.prizeLeft.textContent = count;
+    
+    if (elements.bar) {
+      elements.bar.style.width = (percent * 100) + "%";
+    }
+    if (elements.text) {
+      elements.text.textContent = count + "/" + totalCount;
+    }
+    if (prizeElement.prizeLeft) {
+      prizeElement.prizeLeft.textContent = count;
+    }
   };
 })();
 
@@ -649,6 +681,143 @@ function addDanMu(text) {
   lastDanMuList.push(text);
 }
 
+function showPrizeConfirm(luckyUsers, prize) {
+  if (!luckyUsers || luckyUsers.length === 0) {
+    return;
+  }
+
+  let winnerNames = luckyUsers.map(user => user[1]).join("、");
+  console.log('showPrizeConfirm 被调用');
+  console.log('luckyUsers:', luckyUsers);
+  console.log('prize:', prize);
+  
+  let modal = document.createElement('div');
+  modal.id = 'prize-confirm-modal';
+  modal.className = 'prize-confirm-modal';
+  modal.innerHTML = `
+    <div class="prize-confirm-content">
+      <h2>🎉 恭喜中奖 🎉</h2>
+      <div class="winner-info">
+        <p class="winner-names">${winnerNames}</p>
+        <p class="prize-name">${prize.text} ${prize.title}</p>
+      </div>
+      <button id="confirm-close-btn" class="confirm-button">确定</button>
+    </div>
+  `;
+  
+  let style = document.createElement('style');
+  style.textContent = `
+    .prize-confirm-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.7);
+      z-index: 2000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .prize-confirm-content {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 20px;
+      padding: 40px;
+      text-align: center;
+      color: white;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      animation: zoomIn 0.3s ease;
+    }
+    @keyframes zoomIn {
+      from { transform: scale(0.8); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    .prize-confirm-content h2 {
+      margin-bottom: 30px;
+      font-size: 28px;
+    }
+    .winner-info {
+      margin-bottom: 30px;
+    }
+    .winner-names {
+      font-size: 32px;
+      font-weight: bold;
+      margin: 15px 0;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    .prize-name {
+      font-size: 20px;
+      opacity: 0.9;
+      margin-top: 10px;
+    }
+    .confirm-button {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      border: none;
+      border-radius: 30px;
+      padding: 15px 50px;
+      font-size: 20px;
+      color: white;
+      cursor: pointer;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      box-shadow: 0 5px 20px rgba(240, 147, 251, 0.4);
+    }
+    .confirm-button:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 25px rgba(240, 147, 251, 0.5);
+    }
+  `;
+  
+  document.head.appendChild(style);
+  document.body.appendChild(modal);
+  
+  console.log('modal已添加到body');
+  console.log('window.onPrizeConfirmClose:', window.onPrizeConfirmClose);
+  
+  // 延迟绑定事件，确保DOM已完全渲染
+  setTimeout(function() {
+    let confirmBtn = document.getElementById('confirm-close-btn');
+    console.log('confirmBtn元素:', confirmBtn);
+    
+    if (confirmBtn) {
+      confirmBtn.onclick = function() {
+        console.log('确定按钮被点击');
+        console.log('window.onPrizeConfirmClose:', window.onPrizeConfirmClose);
+        
+        // 调用回调函数
+        if (window.onPrizeConfirmClose && typeof window.onPrizeConfirmClose === 'function') {
+          console.log('调用回调函数');
+          window.onPrizeConfirmClose(luckyUsers, prize);
+        } else {
+          console.error('window.onPrizeConfirmClose未定义或不是函数');
+          alert('回调函数未定义!');
+        }
+        
+        console.log('准备移除弹窗');
+        
+        // 移除弹窗
+        let modalEl = document.getElementById('prize-confirm-modal');
+        if (modalEl) {
+          console.log('找到modal元素，移除');
+          modalEl.parentNode.removeChild(modalEl);
+        } else {
+          console.error('找不到modal元素');
+        }
+        
+        // 移除样式
+        let styleEl = document.querySelector('style');
+        if (styleEl && styleEl.textContent.includes('.prize-confirm-modal')) {
+          styleEl.parentNode.removeChild(styleEl);
+        }
+        
+        console.log('弹窗移除完成');
+      };
+      console.log('按钮事件绑定成功');
+    } else {
+      console.error('找不到confirm-close-btn元素');
+    }
+  }, 100);
+}
+
 export {
   startMaoPao,
   showPrizeList,
@@ -658,5 +827,8 @@ export {
   resetPrize,
   addQipao,
   setupPrizeSelection,
-  setPrizeStatus
+  setPrizeStatus,
+  resetPrizeStatus,
+  showPrizeConfirm,
+  isPrizeDone
 };

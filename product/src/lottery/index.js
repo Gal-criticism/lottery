@@ -8,7 +8,10 @@ import {
   setPrizeData,
   resetPrize,
   setupPrizeSelection,
-  setPrizeStatus
+  setPrizeStatus,
+  resetPrizeStatus,
+  showPrizeConfirm,
+  isPrizeDone
 } from "./prizeList";
 import { NUMBER_MATRIX } from "./config.js";
 
@@ -57,7 +60,10 @@ let selectedCardIndex = [],
   currentPrize,
   // 正在抽奖
   isLotting = false,
-  currentLuckys = [];
+  currentLuckys = [],
+  // 中奖确认弹窗相关
+  showConfirmModal = null,
+  currentResultData = null;
 
 initAll();
 
@@ -121,6 +127,67 @@ function initAll() {
         let luckyCount = luckys ? luckys.length : 0;
         setPrizeData(currentPrizeIndex, luckyCount);
       });
+      
+      // 设置中奖确认弹窗关闭时的回调
+      window.onPrizeConfirmClose = function(luckyUsers, prize) {
+        // 保存中奖数据
+        let type = prize.type;
+        let curLucky = basicData.luckyUsers[type] || [];
+        curLucky = curLucky.concat(luckyUsers);
+        basicData.luckyUsers[type] = curLucky;
+        
+        // 异步保存数据到服务器
+        setData(type, luckyUsers);
+        
+        // 如果奖品已抽完，标记为已完成
+        if (curLucky.length >= prize.count) {
+          let status = {};
+          status[prize.type] = true;
+          setPrizeStatus(status);
+          addQipao(`[${prize.title}]已抽完！`);
+          
+          // 更新 currentPrizeIndex 到下一个未完成的奖品
+          for (let i = 1; i < basicData.prizes.length; i++) {
+            if (!isPrizeDone(basicData.prizes[i].type)) {
+              currentPrizeIndex = i;
+              currentPrize = basicData.prizes[i];
+              break;
+            }
+          }
+        }
+        
+        // 清除选中状态，允许重新选择奖品
+        selectedPrizeType = null;
+        window.selectedPrizeType = null;
+        
+        // 更新奖品列表显示
+        try {
+          showPrizeList(currentPrizeIndex);
+        } catch (e) {
+          console.error('showPrizeList 错误:', e);
+        }
+        
+        // 更新剩余数量显示
+        try {
+          changePrize();
+        } catch (e) {
+          console.error('changePrize 错误:', e);
+        }
+        
+        // 恢复奖品选择
+        try {
+          setPrizeSelecting(true);
+        } catch (e) {
+          console.error('setPrizeSelecting 错误:', e);
+        }
+        
+        // 检查是否所有奖品都已抽完
+        try {
+          checkLotteryFinished();
+        } catch (e) {
+          console.error('checkLotteryFinished 错误:', e);
+        }
+      };
     }
   });
 
@@ -237,7 +304,6 @@ function bindEvent() {
       if (e.target.id === "lottery") {
         rotateObj.stop();
         btns.lottery.innerHTML = "开始抽奖";
-        setPrizeSelecting(true);  // 恢复奖品选择
       } else {
         addQipao("正在抽奖，抽慢一点点～～");
       }
@@ -276,6 +342,7 @@ function bindEvent() {
         basicData.luckyUsers = {};
         currentPrizeIndex = 1; // 重置时从一等奖开始
         currentPrize = basicData.prizes[currentPrizeIndex];
+        resetPrizeStatus(); // 重置奖品状态
 
         resetPrize(currentPrizeIndex);
         reset();
@@ -308,14 +375,12 @@ function bindEvent() {
           showPrizeList(currentPrizeIndex);
         }
         
-        setLotteryStatus(true);
-        setPrizeSelecting(false);  // 禁止选择奖品
-        // 每次抽奖前先保存上一次的抽奖数据
-        saveData();
-        //更新剩余抽奖数目的数据显示
-        changePrize();
+        // 先执行 resetCard，完成后再禁用选择并开始抽奖
         resetCard().then(res => {
-          // 抽奖
+          setLotteryStatus(true);
+          setPrizeSelecting(false);  // 动画结束后才禁止选择奖品
+          //更新剩余抽奖数目的数据显示
+          changePrize();
           lottery();
         });
         addQipao(`正在抽取[${currentPrize.title}],调整好姿势`);
@@ -602,9 +667,12 @@ function selectCard(duration = 600) {
     .onUpdate(render)
     .start()
     .onComplete(() => {
-      // 动画结束后可以操作
-      setLotteryStatus();
+      // 动画结束后显示确认弹窗（数据处理在用户关闭弹窗后执行）
+      setLotteryStatus(false); // 确保状态被正确重置为 false
       btns.lottery.innerHTML = "开始抽奖";
+      
+      // 显示中奖确认弹窗
+      showPrizeConfirm(currentLuckys, currentPrize);
     });
 }
 
