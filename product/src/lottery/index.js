@@ -237,6 +237,7 @@ function bindEvent() {
       if (e.target.id === "lottery") {
         rotateObj.stop();
         btns.lottery.innerHTML = "开始抽奖";
+        setPrizeSelecting(true);  // 恢复奖品选择
       } else {
         addQipao("正在抽奖，抽慢一点点～～");
       }
@@ -308,6 +309,7 @@ function bindEvent() {
         }
         
         setLotteryStatus(true);
+        setPrizeSelecting(false);  // 禁止选择奖品
         // 每次抽奖前先保存上一次的抽奖数据
         saveData();
         //更新剩余抽奖数目的数据显示
@@ -327,6 +329,7 @@ function bindEvent() {
         setErrorData(currentLuckys);
         addQipao(`重新抽取[${currentPrize.title}],做好准备`);
         setLotteryStatus(true);
+        setPrizeSelecting(false);  // 禁止选择奖品
         // 重新抽奖则直接进行抽取，不对上一次的抽奖数据进行保存
         // 抽奖
         resetCard().then(res => {
@@ -666,6 +669,8 @@ function lottery() {
   //   btns.lottery.innerHTML = "开始抽奖";
   //   return;
   // }
+  setLotteryStatus(true);
+  setPrizeSelecting(false);  // 禁止选择奖品
   btns.lottery.innerHTML = "结束抽奖";
   rotateBall().then(() => {
     // 将之前的记录置空

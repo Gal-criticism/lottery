@@ -43,10 +43,288 @@ function isPrizeDone(type) {
 
 let selectedPrizeType = null;
 window.selectedPrizeType = null;
+let isPrizeSelecting = true;
+
+window.setPrizeSelecting = function(status) {
+  isPrizeSelecting = status;
+};
+
+// 图片预览相关变量
+let currentPreviewImages = [];
+let currentPreviewIndex = 0;
+let prizeImagesMap = {};
+let prizeImagesMapLoaded = {};
+
+window.openPrizeImagePreview = function(prizeName, currentImg) {
+  let baseName = prizeName;
+  let imgDir = "../img/";
+  let exts = ['.jpg', '.png', '.webp'];
+  
+  if (prizeImagesMapLoaded[prizeName]) {
+    currentPreviewImages = prizeImagesMap[prizeName] || [currentImg];
+    currentPreviewIndex = 0;
+    createImagePreviewModal();
+    showPrizePreviewImage();
+    updatePrizePreviewNav();
+    return;
+  }
+  
+  prizeImagesMapLoaded[prizeName] = true;
+  prizeImagesMap[prizeName] = [currentImg];
+  currentPreviewImages = [currentImg];
+  currentPreviewIndex = 0;
+  
+  createImagePreviewModal();
+  showPrizePreviewImage();
+  
+  let foundCount = 1;  // 图片文件名从 1 开始
+  let foundImages = [currentImg];
+  let checkedSet = new Set();  // 防止重复检查
+  
+  function checkNext() {
+    foundCount++;
+    
+    if (foundCount > 30) {
+      return;
+    }
+    
+    let extIndex = 0;
+    
+    function checkExt() {
+      if (extIndex >= exts.length) {
+        checkNext();
+        return;
+      }
+      
+      let ext = exts[extIndex];
+      let url = imgDir + baseName + "-" + foundCount + ext;
+      let img = new Image();
+      
+      img.onload = function() {
+         if (this.complete && this.naturalWidth > 0) {
+           if (!checkedSet.has(url)) {
+             checkedSet.add(url);
+             foundImages.push(url);
+             if (foundImages.length > 1) {
+               currentPreviewImages = [...foundImages];
+               updatePrizePreviewNav();
+             }
+           }
+         }
+         extIndex++;
+         checkExt();
+      };
+      
+      img.onerror = function() {
+        extIndex++;
+        checkExt();
+      };
+      
+      img.src = url;
+    }
+    
+    checkExt();
+  }
+  
+  checkNext();
+};
+
+function showPrizePreviewImage() {
+  let previewImg = document.getElementById('prize-preview-image');
+  let loading = document.querySelector('.prize-preview-loading');
+  let modal = document.getElementById('prize-image-preview-modal');
+  
+  if (modal) modal.style.display = 'block';
+  if (loading) loading.style.display = 'block';
+  if (previewImg) {
+    previewImg.style.display = 'none';
+    previewImg.src = currentPreviewImages[currentPreviewIndex] || '';
+    
+    previewImg.onload = function() {
+      if (loading) loading.style.display = 'none';
+      previewImg.style.display = 'block';
+    };
+  }
+}
+
+function updatePrizePreviewNav() {
+  let prevBtn = document.getElementById('prize-prev-image');
+  let nextBtn = document.getElementById('prize-next-image');
+  let counter = document.getElementById('prize-preview-counter');
+  
+  if (prevBtn) prevBtn.style.display = currentPreviewImages.length > 1 ? 'flex' : 'none';
+  if (nextBtn) nextBtn.style.display = currentPreviewImages.length > 1 ? 'flex' : 'none';
+  if (counter) counter.textContent = (currentPreviewIndex + 1) + ' / ' + currentPreviewImages.length;
+}
+
+window.changePrizePreviewImage = function(direction) {
+  if (currentPreviewImages.length <= 1) return;
+  
+  currentPreviewIndex += direction;
+  
+  if (currentPreviewIndex < 0) {
+    currentPreviewIndex = currentPreviewImages.length - 1;
+  } else if (currentPreviewIndex >= currentPreviewImages.length) {
+    currentPreviewIndex = 0;
+  }
+  
+  let previewImg = document.getElementById('prize-preview-image');
+  if (previewImg) {
+    previewImg.style.display = 'none';
+    previewImg.src = currentPreviewImages[currentPreviewIndex];
+    
+    previewImg.onload = function() {
+      let loading = document.querySelector('.prize-preview-loading');
+      if (loading) loading.style.display = 'none';
+      previewImg.style.display = 'block';
+    };
+  }
+  
+  updatePrizePreviewNav();
+};
+
+// 创建图片预览模态框
+function createImagePreviewModal() {
+  if (document.getElementById('prize-image-preview-modal')) return;
+  
+  let modalHTML = `
+    <div id="prize-image-preview-modal" class="prize-image-preview-modal" onclick="closePrizeImagePreview(event)">
+      <div class="prize-preview-content">
+        <span class="prize-preview-close" onclick="document.getElementById('prize-image-preview-modal').style.display='none'">&times;</span>
+        <div class="prize-preview-wrapper">
+          <button id="prize-prev-image" class="prize-preview-btn prev" onclick="event.stopPropagation(); changePrizePreviewImage(-1)">&#10094;</button>
+          <div class="prize-preview-image-container">
+            <div class="prize-preview-loading"></div>
+            <img id="prize-preview-image" src="" alt="奖品图片" onclick="event.stopPropagation()">
+          </div>
+          <button id="prize-next-image" class="prize-preview-btn next" onclick="event.stopPropagation(); changePrizePreviewImage(1)">&#10095;</button>
+        </div>
+        <div id="prize-preview-counter" class="prize-preview-counter"></div>
+      </div>
+    </div>
+  `;
+  
+  let style = document.createElement('style');
+  style.textContent = `
+    .prize-image-preview-modal {
+      display: none;
+      position: fixed;
+      z-index: 2000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.85);
+    }
+    .prize-preview-content {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      max-width: 90%;
+      max-height: 90%;
+    }
+    .prize-preview-close {
+      position: absolute;
+      top: -40px;
+      right: 0;
+      color: #fff;
+      font-size: 40px;
+      cursor: pointer;
+      z-index: 2001;
+    }
+    .prize-preview-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    .prize-preview-image-container {
+      position: relative;
+      width: 500px;
+      height: 500px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .prize-preview-image-container img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+    .prize-preview-btn {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: rgba(97, 125, 242, 0.6);
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-size: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+    }
+    .prize-preview-btn:hover {
+      background: rgba(97, 125, 242, 0.9);
+      transform: scale(1.1);
+    }
+    .prize-preview-btn.prev { margin-right: 10px; }
+    .prize-preview-btn.next { margin-left: 10px; }
+    .prize-preview-counter {
+      text-align: center;
+      color: #fff;
+      margin-top: 15px;
+      font-size: 16px;
+    }
+    .prize-preview-loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 40px;
+      height: 40px;
+      border: 4px solid rgba(255,255,255,0.3);
+      border-top-color: #617df2;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+  `;
+  
+  document.head.appendChild(style);
+  document.body.insertAdjacentHTML('beforeend', modalHTML);
+  
+  let previewImg = document.getElementById('prize-preview-image');
+  if (previewImg) {
+    previewImg.onload = function() {
+      let loading = document.querySelector('.prize-preview-loading');
+      if (loading) loading.style.display = 'none';
+      previewImg.style.display = 'block';
+    };
+  }
+}
+
+// 关闭图片预览
+window.closePrizeImagePreview = function(event) {
+  if (!event || event.target === document.getElementById('prize-image-preview-modal')) {
+    document.getElementById('prize-image-preview-modal').style.display = 'none';
+  }
+};
 
 function selectPrize(type, index) {
   if (isPrizeDone(type)) {
     addQipao("该奖品已抽完，无法再次选择！");
+    return;
+  }
+  
+  if (!isPrizeSelecting) {
+    addQipao("正在抽奖中，无法切换奖品！");
     return;
   }
   
@@ -226,7 +504,7 @@ function showPrizeList(currentPrizeIndex) {
     htmlCode += `<li id="prize-item-${item.type}" class="prize-item ${selectedClass}" ${clickHandler} style="${cursorStyle}${opacity}">
                         <span></span><span></span><span></span><span></span>
                         <div class="prize-img">
-                            <img src="${item.img}" alt="${item.title}">
+                            <img src="${item.img}" alt="${item.title}" onclick="event.stopPropagation(); openPrizeImagePreview('${item.text}', '${item.img}')" style="cursor: pointer;">
                         </div>
                         <div class="prize-text">
                             <h5 class="prize-title">${item.text} ${
@@ -245,6 +523,7 @@ function showPrizeList(currentPrizeIndex) {
                                     ${item.count + "/" + item.count}
                                 </div>
                             </div>
+                            <button class="prize-view-all-btn" onclick="event.stopPropagation(); openPrizeImagePreview('${item.text}', '${item.img}')">查看全部</button>
                         </div>
                     </li>`;
   });
