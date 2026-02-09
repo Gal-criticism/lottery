@@ -478,6 +478,17 @@ button:active {
   margin: 1.8vh 0;
 }
 
+.prize-item.selected {
+  box-shadow: 0 0 20px 5px rgba(253, 105, 0, 0.9) !important;
+  border: 2px solid rgba(253, 105, 0, 0.95) !important;
+  transform: scale(1.02);
+  transition: all 0.3s ease;
+}
+
+.prize-item.selected .prize-img {
+  box-shadow: 0 0 10px rgba(253, 105, 0, 0.5);
+}
+
 .prize-mess {
   color: #fff;
   line-height: 5vh;

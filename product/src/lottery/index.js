@@ -6,7 +6,9 @@ import {
   setPrizes,
   showPrizeList,
   setPrizeData,
-  resetPrize
+  resetPrize,
+  setupPrizeSelection,
+  setPrizeStatus
 } from "./prizeList";
 import { NUMBER_MATRIX } from "./config.js";
 
@@ -97,6 +99,28 @@ function initAll() {
       showPrizeList(currentPrizeIndex);
       let curLucks = basicData.luckyUsers[currentPrize.type];
       setPrizeData(currentPrizeIndex, curLucks ? curLucks.length : 0, true);
+      
+      // 设置奖品状态
+      let status = {};
+      prizes.forEach((prize, index) => {
+        if (index === 0) return;
+        let luckys = basicData.luckyUsers[prize.type];
+        let count = luckys ? luckys.length : 0;
+        status[prize.type] = count >= prize.count;
+      });
+      setPrizeStatus(status);
+      
+      // 设置奖品选择回调
+      setupPrizeSelection((type, index) => {
+        currentPrizeIndex = index;
+        currentPrize = prizes[index];
+        
+        showPrizeList(currentPrizeIndex);
+        
+        let luckys = basicData.luckyUsers[currentPrize.type];
+        let luckyCount = luckys ? luckys.length : 0;
+        setPrizeData(currentPrizeIndex, luckyCount);
+      });
     }
   });
 
@@ -268,6 +292,21 @@ function bindEvent() {
           addQipao("抽奖已结束，所有奖品都已抽完！");
           return;
         }
+        
+        // 必须先选中奖品才能抽奖
+        if (!selectedPrizeType) {
+          addQipao("请先点击选择奖品后再开始抽奖！");
+          return;
+        }
+        
+        // 使用用户选中的奖品
+        let selectedPrize = prizes.find(p => p.type === selectedPrizeType);
+        if (selectedPrize) {
+          currentPrizeIndex = prizes.indexOf(selectedPrize);
+          currentPrize = selectedPrize;
+          showPrizeList(currentPrizeIndex);
+        }
+        
         setLotteryStatus(true);
         // 每次抽奖前先保存上一次的抽奖数据
         saveData();
@@ -694,11 +733,27 @@ function saveData() {
   if (currentLuckys.length > 0) {
     // todo by xc 添加数据保存机制，以免服务器挂掉数据丢失
     return setData(type, currentLuckys).then(() => {
+      updatePrizeStatus();
       checkLotteryFinished();
     });
   }
+  updatePrizeStatus();
   checkLotteryFinished();
   return Promise.resolve();
+}
+
+function updatePrizeStatus() {
+  let status = {};
+  basicData.prizes.forEach((prize, index) => {
+    if (index === 0) return;
+    let luckys = basicData.luckyUsers[prize.type];
+    let count = luckys ? luckys.length : 0;
+    status[prize.type] = count >= prize.count;
+  });
+  setPrizeStatus(status);
+  
+  // 重新渲染奖品列表以更新可点击状态
+  showPrizeList(currentPrizeIndex);
 }
 
 function checkLotteryFinished() {
@@ -726,7 +781,7 @@ function checkLotteryFinished() {
 
 function changePrize() {
   let luckys = basicData.luckyUsers[currentPrize.type];
-  let luckyCount = (luckys ? luckys.length : 0) + EACH_COUNT[currentPrizeIndex];
+  let luckyCount = luckys ? luckys.length : 0;
   // 修改左侧prize的数目和百分比
   setPrizeData(currentPrizeIndex, luckyCount);
 }

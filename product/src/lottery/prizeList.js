@@ -22,6 +22,49 @@ let lastDanMuList = [];
 
 let prizeElement = {},
   lasetPrizeIndex = 0;
+
+
+
+let prizeSelectionCallback = null;
+
+function setupPrizeSelection(callback) {
+  prizeSelectionCallback = callback;
+}
+
+let prizeStatus = {};
+
+function setPrizeStatus(statusData) {
+  prizeStatus = statusData || {};
+}
+
+function isPrizeDone(type) {
+  return !!prizeStatus[type];
+}
+
+let selectedPrizeType = null;
+window.selectedPrizeType = null;
+
+function selectPrize(type, index) {
+  if (isPrizeDone(type)) {
+    addQipao("该奖品已抽完，无法再次选择！");
+    return;
+  }
+  
+  selectedPrizeType = type;
+  window.selectedPrizeType = type;
+  
+  if (prizeSelectionCallback) {
+    prizeSelectionCallback(type, index);
+  }
+  
+  let prize = prizes.find(p => p.type === type);
+  if (prize) {
+    addQipao(`已选择奖品: ${prize.text} ${prize.title}，准备开始抽奖！`);
+  }
+}
+
+window.selectPrize = selectPrize;
+window.setPrizeStatus = setPrizeStatus;
 class DanMu {
   constructor(option) {
     if (typeof option !== "object") {
@@ -158,14 +201,29 @@ function showPrizeList(currentPrizeIndex) {
   if (currentPrize.type === defaultType) {
     currentPrize.count === "不限制";
   }
+  
   let htmlCode = `<div class="prize-mess">正在抽取<label id="prizeType" class="prize-shine">${currentPrize.text}</label><label id="prizeText" class="prize-shine">${currentPrize.title}</label>，剩余<label id="prizeLeft" class="prize-shine">${currentPrize.count}</label>个</div><ul class="prize-list">`;
-  prizes.forEach(item => {
+  prizes.forEach((item, index) => {
     if (item.type === defaultType) {
       return true;
     }
-    htmlCode += `<li id="prize-item-${item.type}" class="prize-item ${
-      item.type == currentPrize.type ? "shine" : ""
-    }">
+    
+    let done = isPrizeDone(item.type);
+    
+    // 已完成的奖品不再显示
+    if (done) {
+      return;
+    }
+    
+    let isSelected = selectedPrizeType === item.type;
+    let isSelectable = !isSelected;
+    let clickHandler = isSelectable ? `onclick="selectPrize('${item.type}', ${index})"` : '';
+    let cursorStyle = isSelectable ? 'cursor: pointer;' : 'cursor: not-allowed;';
+    let selectedClass = isSelected ? 'selected' : '';
+    
+    let opacity = '';
+    
+    htmlCode += `<li id="prize-item-${item.type}" class="prize-item ${selectedClass}" ${clickHandler} style="${cursorStyle}${opacity}">
                         <span></span><span></span><span></span><span></span>
                         <div class="prize-img">
                             <img src="${item.img}" alt="${item.title}">
@@ -198,6 +256,9 @@ function showPrizeList(currentPrizeIndex) {
 function resetPrize(currentPrizeIndex) {
   prizeElement = {};
   lasetPrizeIndex = currentPrizeIndex;
+  prizeStatus = {};
+  selectedPrizeType = null;
+  window.selectedPrizeType = null;
   showPrizeList(currentPrizeIndex);
 }
 
@@ -310,5 +371,7 @@ export {
   addDanMu,
   setPrizes,
   resetPrize,
-  addQipao
+  addQipao,
+  setupPrizeSelection,
+  setPrizeStatus
 };
