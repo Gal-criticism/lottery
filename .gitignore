@@ -3,3 +3,7 @@ node_modules/
 dist/
 temp.json
 error.json
+
+# 图片目录 - 不提交图片文件
+product/src/img/
+product/src/img/**/*
