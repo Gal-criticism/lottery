@@ -54,8 +54,10 @@ let currentPreviewImages = [];
 let currentPreviewIndex = 0;
 let prizeImagesMap = {};
 let prizeImagesMapLoaded = {};
+let currentPreviewPrizeName = null;
 
 window.openPrizeImagePreview = function(prizeName, currentImg) {
+  currentPreviewPrizeName = prizeName;
   let baseName = prizeName;
   let imgDir = "../img/";
   let exts = ['.jpg', '.png', '.webp'];
@@ -105,7 +107,11 @@ window.openPrizeImagePreview = function(prizeName, currentImg) {
            if (!checkedSet.has(url)) {
              checkedSet.add(url);
              foundImages.push(url);
-             if (foundImages.length > 1) {
+             // 实时更新缓存，这样下次打开时就能直接看到已找到的图片
+             prizeImagesMap[prizeName] = [...foundImages];
+
+             // 只有当用户还在预览当前奖品时才更新 UI
+             if (currentPreviewPrizeName === prizeName && foundImages.length > 1) {
                currentPreviewImages = [...foundImages];
                updatePrizePreviewNav();
              }
