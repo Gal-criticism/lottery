@@ -215,7 +215,7 @@ function showPrizeList(currentPrizeIndex) {
       return;
     }
     
-    let isSelected = selectedPrizeType === item.type;
+    let isSelected = String(item.type) === String(selectedPrizeType);
     let isSelectable = !isSelected;
     let clickHandler = isSelectable ? `onclick="selectPrize('${item.type}', ${index})"` : '';
     let cursorStyle = isSelectable ? 'cursor: pointer;' : 'cursor: not-allowed;';
