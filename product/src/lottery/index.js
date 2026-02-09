@@ -80,8 +80,8 @@ function initAll() {
       basicData.leftUsers = data.leftUsers;
       basicData.luckyUsers = data.luckyData;
 
-      let prizeIndex = basicData.prizes.length - 1;
-      for (; prizeIndex > -1; prizeIndex--) {
+      let prizeIndex = 1; // 从一等奖开始，跳过特别奖占位符
+      for (; prizeIndex < basicData.prizes.length; prizeIndex++) {
         if (
           data.luckyData[prizeIndex] &&
           data.luckyData[prizeIndex].length >=
@@ -249,15 +249,25 @@ function bindEvent() {
         currentLuckys = [];
         basicData.leftUsers = Object.assign([], basicData.users);
         basicData.luckyUsers = {};
-        currentPrizeIndex = basicData.prizes.length - 1;
+        currentPrizeIndex = 1; // 重置时从一等奖开始
         currentPrize = basicData.prizes[currentPrizeIndex];
 
         resetPrize(currentPrizeIndex);
         reset();
+        // 重置按钮状态
+        btns.lottery.innerHTML = "开始抽奖";
+        btns.lottery.disabled = false;
+        btns.lottery.style.opacity = "";
+        btns.lottery.style.cursor = "";
         switchScreen("enter");
         break;
       // 抽奖
       case "lottery":
+        // 如果按钮被禁用，不执行抽奖
+        if (btns.lottery.disabled) {
+          addQipao("抽奖已结束，所有奖品都已抽完！");
+          return;
+        }
         setLotteryStatus(true);
         // 每次抽奖前先保存上一次的抽奖数据
         saveData();
@@ -552,6 +562,7 @@ function selectCard(duration = 600) {
     .onComplete(() => {
       // 动画结束后可以操作
       setLotteryStatus();
+      btns.lottery.innerHTML = "开始抽奖";
     });
 }
 
@@ -628,9 +639,10 @@ function lottery() {
       leftPrizeCount = currentPrize.count - (luckyData ? luckyData.length : 0);
 
     if (leftCount < perCount) {
-      addQipao("剩余参与抽奖人员不足，现在重新设置所有人员可以进行二次抽奖！");
-      basicData.leftUsers = basicData.users.slice();
-      leftCount = basicData.leftUsers.length;
+      alert(`剩余参与抽奖人员不足，无法进行抽奖！\n剩余人数：${leftCount}，需要人数：${perCount}`);
+      setLotteryStatus(false);
+      btns.lottery.innerHTML = "开始抽奖";
+      return;
     }
 
     for (let i = 0; i < perCount; i++) {
@@ -672,18 +684,44 @@ function saveData() {
   basicData.luckyUsers[type] = curLucky;
 
   if (currentPrize.count <= curLucky.length) {
-    currentPrizeIndex--;
-    if (currentPrizeIndex <= -1) {
-      currentPrizeIndex = 0;
+    currentPrizeIndex++;
+    if (currentPrizeIndex >= basicData.prizes.length) {
+      currentPrizeIndex = basicData.prizes.length - 1;
     }
     currentPrize = basicData.prizes[currentPrizeIndex];
   }
 
   if (currentLuckys.length > 0) {
     // todo by xc 添加数据保存机制，以免服务器挂掉数据丢失
-    return setData(type, currentLuckys);
+    return setData(type, currentLuckys).then(() => {
+      checkLotteryFinished();
+    });
   }
+  checkLotteryFinished();
   return Promise.resolve();
+}
+
+function checkLotteryFinished() {
+  // 检查是否所有奖品都已抽完
+  let allPrizesFinished = true;
+  for (let i = 1; i < basicData.prizes.length; i++) { // 从索引1开始，跳过特别奖占位符
+    let prize = basicData.prizes[i];
+    let prizeLuckys = basicData.luckyUsers[prize.type];
+    if (!prizeLuckys || prizeLuckys.length < prize.count) {
+      allPrizesFinished = false;
+      break;
+    }
+  }
+
+  if (allPrizesFinished) {
+    btns.lottery.innerHTML = "抽奖已结束";
+    btns.lottery.disabled = true;
+    btns.lottery.style.opacity = "0.5";
+    btns.lottery.style.cursor = "not-allowed";
+    setTimeout(() => {
+      addQipao("恭喜！所有奖品都已抽完，抽奖活动圆满结束！");
+    }, 1000);
+  }
 }
 
 function changePrize() {

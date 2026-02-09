@@ -14,13 +14,6 @@ const prizes = [
     text: "特别奖"
   },
   {
-    type: 1,
-    count: 2,
-    text: "特等奖",
-    title: "神秘大礼",
-    img: "../img/secrit.jpg"
-  },
-  {
     type: 2,
     count: 1,
     text: "一等奖",
@@ -102,7 +95,7 @@ const prizes = [
 /**
  * 一次抽取的奖品个数与prizes对应
  */
-const EACH_COUNT = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ];
+const EACH_COUNT = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
 
 /**
  * 卡片公司名称标识

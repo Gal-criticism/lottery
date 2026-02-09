@@ -137,11 +137,13 @@ router.post("/errorData", (req, res, next) => {
 
 // 保存数据到excel中去
 router.post("/export", (req, res, next) => {
-  let type = [1, 2, 3, 4, 5, defaultType],
-    outData = [["工号", "姓名", "部门"]];
+  let outData = [["奖品名称", "获奖者"]];
   cfg.prizes.forEach(item => {
-    outData.push([item.text]);
-    outData = outData.concat(luckyData[item.type] || []);
+    if (item.type === defaultType) return;
+    let winners = luckyData[item.type] || [];
+    winners.forEach(winner => {
+      outData.push([item.text, winner.join(" ")]);
+    });
   });
 
   writeXML(outData, "/抽奖结果.xlsx")

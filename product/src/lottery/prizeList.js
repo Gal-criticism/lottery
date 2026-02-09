@@ -224,7 +224,7 @@ let setPrizeData = (function () {
     }
 
     if (isInit) {
-      for (let i = prizes.length - 1; i > currentPrizeIndex; i--) {
+      for (let i = 1; i < currentPrizeIndex; i++) {
         let type = prizes[i]["type"];
         document.querySelector(`#prize-item-${type}`).className =
           "prize-item done";
