@@ -133,11 +133,24 @@ function initAll() {
         // 保存中奖数据
         let type = prize.type;
         let curLucky = basicData.luckyUsers[type] || [];
-        curLucky = curLucky.concat(luckyUsers);
-        basicData.luckyUsers[type] = curLucky;
         
-        // 异步保存数据到服务器
-        setData(type, luckyUsers);
+        // 检查用户是否已存在，避免重复添加
+        let existingUserIds = new Set(curLucky.map(user => user[0]));
+        let newUsers = luckyUsers.filter(user => !existingUserIds.has(user[0]));
+        
+        if (newUsers.length > 0) {
+          curLucky = curLucky.concat(newUsers);
+          basicData.luckyUsers[type] = curLucky;
+          
+          // 异步保存数据到服务器
+          setData(type, newUsers);
+        } else {
+          // 如果没有新用户，不保存
+          console.log('没有新用户需要保存');
+        }
+        
+        // 清空中奖记录，防止导出时重复保存
+        currentLuckys = [];
         
         // 如果奖品已抽完，标记为已完成
         if (curLucky.length >= prize.count) {
@@ -680,7 +693,8 @@ function selectCard(duration = 600) {
  * 重置抽奖牌内容
  */
 function resetCard(duration = 500) {
-  if (currentLuckys.length === 0) {
+  // 如果没有选中的卡片，直接返回
+  if (!selectedCardIndex || selectedCardIndex.length === 0) {
     return Promise.resolve();
   }
 
@@ -721,7 +735,9 @@ function resetCard(duration = 500) {
       .onComplete(() => {
         selectedCardIndex.forEach(index => {
           let object = threeDCards[index];
-          object.element.classList.remove("prize");
+          if (object && object.element) {
+            object.element.classList.remove("prize");
+          }
         });
         resolve();
       });
